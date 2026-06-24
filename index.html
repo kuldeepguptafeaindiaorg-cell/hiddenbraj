@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HiddenBraj — Admin Panel</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0D1B3E;--navy-deep:#081025;
+  --gold:#C9960C;--gold-light:#E8B84B;
+  --cream:#FDF8EE;--text-dark:#1a1208;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:#f4f6fb;color:var(--text-dark);min-height:100vh}
+
+/* Login */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--navy-deep)}
+.login-box{background:#fff;border-radius:12px;padding:2.5rem 2rem;width:100%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.3)}
+.login-box h1{font-size:1.4rem;color:var(--navy);margin-bottom:.25rem}
+.login-box p{font-size:.85rem;color:#666;margin-bottom:1.5rem}
+.login-box input{width:100%;padding:.75rem 1rem;border:1.5px solid #ddd;border-radius:8px;font-size:1rem;margin-bottom:1rem;outline:none;transition:border .2s}
+.login-box input:focus{border-color:var(--gold)}
+.login-box button{width:100%;padding:.8rem;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:1rem;cursor:pointer;transition:background .2s}
+.login-box button:hover{background:#162347}
+.login-error{color:#c0392b;font-size:.85rem;margin-top:.5rem;display:none}
+
+/* Dashboard */
+#dashboard{display:none;padding:2rem}
+header{background:var(--navy);color:#fff;padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+header h1{font-size:1.2rem;letter-spacing:.05em}
+header .logout-btn{background:transparent;border:1px solid rgba(255,255,255,.3);color:#fff;padding:.4rem .9rem;border-radius:6px;cursor:pointer;font-size:.85rem}
+header .logout-btn:hover{background:rgba(255,255,255,.1)}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:2rem}
+.stat-card{background:#fff;border-radius:10px;padding:1.25rem 1.5rem;box-shadow:0 2px 8px rgba(0,0,0,.07)}
+.stat-card .label{font-size:.75rem;color:#888;text-transform:uppercase;letter-spacing:.08em}
+.stat-card .value{font-size:2rem;font-weight:700;color:var(--navy);margin-top:.25rem}
+
+.toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.75rem}
+.toolbar h2{font-size:1.1rem;color:var(--navy)}
+.export-btn{background:var(--gold);color:#fff;border:none;padding:.55rem 1.2rem;border-radius:7px;cursor:pointer;font-size:.9rem;font-weight:600}
+.export-btn:hover{background:#b58209}
+
+.search-bar{padding:.5rem .9rem;border:1.5px solid #ddd;border-radius:7px;font-size:.9rem;width:220px;outline:none}
+.search-bar:focus{border-color:var(--gold)}
+
+.table-wrap{overflow-x:auto;background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.07)}
+table{width:100%;border-collapse:collapse;font-size:.875rem}
+th{background:var(--navy);color:#fff;padding:.75rem 1rem;text-align:left;white-space:nowrap}
+td{padding:.7rem 1rem;border-bottom:1px solid #f0f0f0;vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fffdf5}
+.badge{display:inline-block;padding:.2rem .6rem;border-radius:20px;font-size:.75rem;font-weight:600;background:#e8f4e8;color:#1a6e1a}
+.loading{text-align:center;padding:3rem;color:#888}
+.empty{text-align:center;padding:3rem;color:#aaa}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <h1>🪔 HiddenBraj Admin</h1>
+    <p>Enter your admin token to continue</p>
+    <input type="password" id="tokenInput" placeholder="Admin token" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">Sign In</button>
+    <div class="login-error" id="loginError">Invalid token. Try again.</div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <header>
+    <h1>🪔 HiddenBraj — Registrations</h1>
+    <button class="logout-btn" onclick="doLogout()">Sign Out</button>
+  </header>
+
+  <div style="padding:2rem">
+    <div class="stats" id="stats">
+      <div class="stat-card"><div class="label">Total Registrations</div><div class="value" id="stat-total">—</div></div>
+      <div class="stat-card"><div class="label">Today</div><div class="value" id="stat-today">—</div></div>
+      <div class="stat-card"><div class="label">Tour Requests</div><div class="value" id="stat-tours">—</div></div>
+    </div>
+
+    <div class="toolbar">
+      <h2>All Registrations</h2>
+      <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
+        <input class="search-bar" type="text" id="searchInput" placeholder="Search name, phone, city…" oninput="filterTable()">
+        <button class="export-btn" onclick="exportCSV()">⬇ Export CSV</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="loading" id="loading">Loading registrations…</div>
+      <table id="regTable" style="display:none">
+        <thead>
+          <tr>
+            <th>#</th><th>Date &amp; Time</th><th>Name</th><th>Phone</th>
+            <th>Email</th><th>City</th><th>Tour Type</th><th>Message</th>
+          </tr>
+        </thead>
+        <tbody id="regBody"></tbody>
+      </table>
+      <div class="empty" id="emptyMsg" style="display:none">No registrations found.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let TOKEN = '';
+let ALL_DATA = [];
+
+function doLogin(){
+  const t = document.getElementById('tokenInput').value.trim();
+  if(!t) return;
+  TOKEN = t;
+  fetchData();
+}
+
+function doLogout(){
+  TOKEN = '';
+  ALL_DATA = [];
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('tokenInput').value = '';
+}
+
+async function fetchData(){
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('regTable').style.display = 'none';
+  document.getElementById('emptyMsg').style.display = 'none';
+  document.getElementById('loginError').style.display = 'none';
+
+  try {
+    const res = await fetch('/api/admin-registrations?token=' + encodeURIComponent(TOKEN));
+    if(res.status === 403){
+      document.getElementById('loginError').style.display = 'block';
+      document.getElementById('loading').style.display = 'none';
+      return;
+    }
+    const json = await res.json();
+
+    // Show dashboard
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+
+    // Stats
+    document.getElementById('stat-total').textContent = json.stats.total;
+    document.getElementById('stat-today').textContent = json.stats.today;
+    document.getElementById('stat-tours').textContent = json.stats.tours;
+
+    ALL_DATA = json.registrations;
+    renderTable(ALL_DATA);
+  } catch(err) {
+    document.getElementById('loading').style.display = 'none';
+    alert('Network error: ' + err.message);
+  }
+}
+
+function renderTable(rows){
+  const tbody = document.getElementById('regBody');
+  tbody.innerHTML = '';
+  document.getElementById('loading').style.display = 'none';
+
+  if(!rows.length){
+    document.getElementById('emptyMsg').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('regTable').style.display = 'table';
+  rows.forEach((r, i) => {
+    const dt = new Date(r.ts);
+    const dateStr = dt.toLocaleDateString('en-IN') + ' ' + dt.toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'});
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${i+1}</td>
+      <td style="white-space:nowrap">${dateStr}</td>
+      <td><strong>${esc(r.name)}</strong></td>
+      <td><a href="tel:${esc(r.phone)}">${esc(r.phone)}</a></td>
+      <td>${r.email ? `<a href="mailto:${esc(r.email)}">${esc(r.email)}</a>` : '—'}</td>
+      <td>${esc(r.city)||'—'}</td>
+      <td>${r.tourLabel ? `<span class="badge">${esc(r.tourLabel)}</span>` : '—'}</td>
+      <td style="max-width:200px;word-break:break-word">${esc(r.message)||'—'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function filterTable(){
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const filtered = ALL_DATA.filter(r =>
+    r.name.toLowerCase().includes(q) ||
+    r.phone.includes(q) ||
+    (r.city||'').toLowerCase().includes(q) ||
+    (r.email||'').toLowerCase().includes(q)
+  );
+  renderTable(filtered);
+}
+
+function exportCSV(){
+  window.location = '/api/admin-export-csv?token=' + encodeURIComponent(TOKEN);
+}
+
+function esc(str){
+  if(!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
